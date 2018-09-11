@@ -1,0 +1,541 @@
+/**
+* Copyright (c) 2015 MS
+*
+* This program is free software; you can redistribute it and/or
+* modify it under the terms of the GNU General Public License
+* as published by the Free Software Foundation; either version 2
+* of the License, or (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
+
+package ADaMSoft.procedures;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.util.Enumeration;
+import java.util.Hashtable;
+import java.util.LinkedList;
+import java.util.Vector;
+
+import orinoco.Alignment;
+import orinoco.Column;
+import orinoco.Document;
+import orinoco.Font;
+import orinoco.Heading;
+import orinoco.LayoutWriter;
+import orinoco.OutputFormatWriter;
+import orinoco.PDFWriter;
+import orinoco.PageNumber;
+import orinoco.Paper;
+import orinoco.Table;
+import ADaMSoft.dataaccess.DataReader;
+import ADaMSoft.dataaccess.DictionaryReader;
+import ADaMSoft.keywords.Keywords;
+import ADaMSoft.utilities.GetRequiredParameters;
+import ADaMSoft.utilities.NewWriteFormat;
+
+
+/**
+* Export one or more data sets in a pdf file
+* @author marco.scarno@gmail.com
+* @date 04/09/2015
+*/
+public class ReportPdf implements RunStep
+{
+	/**
+	*Export a data set into a pdf file
+	*/
+	public Result executionresult(Hashtable<String, Object> parameters)
+	{
+		Object tempinfo=parameters.get("reportinfo");
+		@SuppressWarnings("rawtypes")
+		Hashtable reportinfo=(Hashtable)tempinfo;
+
+		int maxds=0;
+		for (@SuppressWarnings("unchecked")
+		Enumeration<Integer> e = reportinfo.keys() ; e.hasMoreElements() ;)
+		{
+			int rifds = ((Integer)e.nextElement()).intValue();
+			if (rifds>maxds)
+				maxds=rifds;
+		}
+		String reportname=(String)parameters.get("reportname");
+		String reportpath=(String)parameters.get("reportpath");
+		if (reportpath.equals(""))
+			reportpath=(String)parameters.get(Keywords.WorkDir);
+		String outreport=reportpath+reportname+".pdf";
+		boolean exist=(new File(outreport)).exists();
+		if (exist)
+		{
+			boolean success = (new File(outreport)).delete();
+			if (!success)
+				return new Result("%482%<br>\n", false, null);
+		}
+		try
+		{
+
+			ByteArrayOutputStream baos=new ByteArrayOutputStream();
+
+			OutputFormatWriter ofw = null;
+
+			ofw = new PDFWriter(baos);
+
+			Object generalinfo=reportinfo.get(new Integer(0));
+			@SuppressWarnings("rawtypes")
+			Hashtable general=(Hashtable)generalinfo;
+			String pdftitle="";
+			String paper="";
+			String writepage="";
+			String titlefonts="";
+			String titlesize="";
+			String pagefonts="";
+			String pagesize="";
+			String titlealign="";
+
+			try { pdftitle=(String)general.get(Keywords.pdftitle);} catch (Exception exe) {}
+			try	{ paper=(String)general.get(Keywords.paper); } catch (Exception exe) {}
+			try	{ writepage=(String)general.get(Keywords.writepage); } catch (Exception exe) {}
+			try	{ titlefonts=(String)general.get(Keywords.titlefonts); } catch (Exception exe) {}
+			try	{ titlesize=(String)general.get(Keywords.titlesize); } catch (Exception exe) {}
+			try	{ pagefonts=(String)general.get(Keywords.pagefonts); } catch (Exception exe) {}
+			try	{ pagesize=(String)general.get(Keywords.pagesize); } catch (Exception exe) {}
+			try	{ titlealign=(String)general.get(Keywords.titlealign); } catch (Exception exe) {}
+
+			if (pdftitle==null) pdftitle="";
+			if (paper==null) paper="";
+			if (writepage==null) writepage="";
+			if (titlefonts==null) titlefonts="";
+			if (titlesize==null) titlesize="";
+			if (pagefonts==null) pagefonts="";
+			if (pagesize==null) pagesize="";
+			if (titlealign==null) titlealign="";
+
+			Paper docpaper=new Paper(Paper.A4);
+			if (paper.equalsIgnoreCase("LETTER"))
+				docpaper=new Paper(Paper.LETTER);
+			if (paper.equalsIgnoreCase("A4_LANDSCAPE"))
+				docpaper=new Paper(Paper.A4_LANDSCAPE);
+			if (paper.equalsIgnoreCase("LETTER_LANDSCAPE"))
+				docpaper=new Paper(Paper.LETTER_LANDSCAPE);
+
+			Document doc = new Document(docpaper, ofw);
+
+			int pstitle=12;
+			if (!titlesize.equals(""))
+			{
+				try
+				{
+					pstitle=Integer.parseInt(titlesize);
+				}
+				catch (Exception exe) {}
+			}
+			int pspagenum=10;
+			if (!pagesize.equals(""))
+			{
+				try
+				{
+					pspagenum=Integer.parseInt(pagesize);
+				}
+				catch (Exception exe) {}
+			}
+
+			Alignment atitle=Alignment.CENTRE;
+			if (titlealign.equalsIgnoreCase("RIGHT"))
+				atitle=Alignment.RIGHT;
+			if (titlealign.equalsIgnoreCase("LEFT"))
+				atitle=Alignment.LEFT;
+
+			Font ftitle=new Font(Font.TIMES, pstitle);
+			if (titlefonts.equalsIgnoreCase("HELVETICA"))
+				ftitle=new Font(Font.HELVETICA, pstitle);
+			if (titlefonts.equalsIgnoreCase("HELVETICA_BOLD"))
+				ftitle=new Font(Font.HELVETICA_BOLD, pstitle);
+			if (titlefonts.equalsIgnoreCase("HELVETICA_BOLD_ITALIC"))
+				ftitle=new Font(Font.HELVETICA_BOLD_ITALIC, pstitle);
+			if (titlefonts.equalsIgnoreCase("HELVETICA_ITALIC"))
+				ftitle=new Font(Font.HELVETICA_ITALIC, pstitle);
+			if (titlefonts.equalsIgnoreCase("TIMES"))
+				ftitle=new Font(Font.TIMES, pstitle);
+			if (titlefonts.equalsIgnoreCase("TIMES_BOLD"))
+				ftitle=new Font(Font.TIMES_BOLD, pstitle);
+			if (titlefonts.equalsIgnoreCase("TIMES_BOLD_ITALIC"))
+				ftitle=new Font(Font.TIMES_BOLD_ITALIC, pstitle);
+			if (titlefonts.equalsIgnoreCase("TIMES_ITALIC"))
+				ftitle=new Font(Font.TIMES_ITALIC, pstitle);
+
+			Font fpagenum=new Font(Font.TIMES, pspagenum);
+			if (pagefonts.equalsIgnoreCase("HELVETICA"))
+				fpagenum=new Font(Font.HELVETICA, pspagenum);
+			if (pagefonts.equalsIgnoreCase("HELVETICA_BOLD"))
+				fpagenum=new Font(Font.HELVETICA_BOLD, pspagenum);
+			if (pagefonts.equalsIgnoreCase("HELVETICA_BOLD_ITALIC"))
+				fpagenum=new Font(Font.HELVETICA_BOLD_ITALIC, pspagenum);
+			if (pagefonts.equalsIgnoreCase("HELVETICA_ITALIC"))
+				fpagenum=new Font(Font.HELVETICA_ITALIC, pspagenum);
+			if (pagefonts.equalsIgnoreCase("TIMES"))
+				fpagenum=new Font(Font.TIMES, pspagenum);
+			if (pagefonts.equalsIgnoreCase("TIMES_BOLD"))
+				fpagenum=new Font(Font.TIMES_BOLD, pspagenum);
+			if (pagefonts.equalsIgnoreCase("TIMES_BOLD_ITALIC"))
+				fpagenum=new Font(Font.TIMES_BOLD_ITALIC, pspagenum);
+			if (pagefonts.equalsIgnoreCase("TIMES_ITALIC"))
+				fpagenum=new Font(Font.TIMES_ITALIC, pspagenum);
+
+			LayoutWriter header = doc.getHeader();
+
+			if (!pdftitle.equals(""))
+				header.writeLine(pdftitle, ftitle, atitle);
+
+			LayoutWriter footer= doc.getFooter();
+
+			if (!writepage.toUpperCase().startsWith("N"))
+			{
+				footer.space(0.1);
+				footer.drawLine();
+				footer.space(0.1);
+				footer.writeMacroLine(new PageNumber(" ", "", doc), fpagenum, Alignment.RIGHT);
+			}
+
+			doc.open();
+
+			for (int i=1; i<=maxds; i++)
+			{
+				doc.newLine();
+				Object tempdsinfo=reportinfo.get(new Integer(i));
+				@SuppressWarnings("rawtypes")
+				Hashtable dsinfo=(Hashtable)tempdsinfo;
+				DictionaryReader dr=(DictionaryReader)dsinfo.get(Keywords.dict);
+				String[] selectedvar=(String[])dsinfo.get(Keywords.var);
+				String replace=(String)dsinfo.get(Keywords.replace);
+				String nocaption=(String)dsinfo.get(Keywords.nocaption);
+				String captionalign=(String)dsinfo.get(Keywords.captionalign);
+				String captionfont=(String)dsinfo.get(Keywords.captionfont);
+				String captionsize=(String)dsinfo.get(Keywords.captionsize);
+				String borderwidth=(String)dsinfo.get(Keywords.borderwidth);
+				String labelalign=(String)dsinfo.get(Keywords.labelalign);
+				String labelfont=(String)dsinfo.get(Keywords.labelfont);
+				String labelsize=(String)dsinfo.get(Keywords.labelsize);
+				String varalign=(String)dsinfo.get(Keywords.varalign);
+				String varfont=(String)dsinfo.get(Keywords.varfont);
+				String varsize=(String)dsinfo.get(Keywords.varsize);
+
+				boolean caption=true;
+				if (nocaption!=null)
+				{
+					if (nocaption.equalsIgnoreCase("NO"))
+						caption=false;
+				}
+
+				int bw=0;
+				if (borderwidth!=null)
+				{
+					try
+					{
+						bw=Integer.parseInt(borderwidth);
+					}
+					catch (Exception exe){}
+				}
+
+				Alignment acaption=Alignment.CENTRE;
+				if (captionalign!=null)
+				{
+					if (captionalign.equalsIgnoreCase("RIGHT"))
+						acaption=Alignment.RIGHT;
+					if (captionalign.equalsIgnoreCase("LEFT"))
+						acaption=Alignment.LEFT;
+				}
+				Alignment alabel=Alignment.CENTRE;
+				if (labelalign!=null)
+				{
+					if (labelalign.equalsIgnoreCase("RIGHT"))
+						alabel=Alignment.RIGHT;
+					if (labelalign.equalsIgnoreCase("LEFT"))
+						alabel=Alignment.LEFT;
+				}
+				Alignment avar=Alignment.CENTRE;
+				if (varalign!=null)
+				{
+					if (varalign.equalsIgnoreCase("RIGHT"))
+						avar=Alignment.RIGHT;
+					if (varalign.equalsIgnoreCase("LEFT"))
+						avar=Alignment.LEFT;
+				}
+
+				int pscaption=12;
+				if (captionsize!=null)
+				{
+					try
+					{
+						pscaption=Integer.parseInt(captionsize);
+					}
+					catch (Exception exe) {}
+				}
+				int pslabel=12;
+				if (labelsize!=null)
+				{
+					try
+					{
+						pslabel=Integer.parseInt(labelsize);
+					}
+					catch (Exception exe) {}
+				}
+				int psvar=12;
+				if (varsize!=null)
+				{
+					try
+					{
+						psvar=Integer.parseInt(varsize);
+					}
+					catch (Exception exe) {}
+				}
+
+				Font fcaption=new Font(Font.TIMES, pscaption);
+				if (captionfont!=null)
+				{
+					if (captionfont.equalsIgnoreCase("HELVETICA"))
+						fcaption=new Font(Font.HELVETICA, pscaption);
+					if (captionfont.equalsIgnoreCase("HELVETICA_BOLD"))
+						fcaption=new Font(Font.HELVETICA_BOLD, pscaption);
+					if (captionfont.equalsIgnoreCase("HELVETICA_BOLD_ITALIC"))
+						fcaption=new Font(Font.HELVETICA_BOLD_ITALIC, pscaption);
+					if (captionfont.equalsIgnoreCase("HELVETICA_ITALIC"))
+						fcaption=new Font(Font.HELVETICA_ITALIC, pscaption);
+					if (captionfont.equalsIgnoreCase("TIMES"))
+						fcaption=new Font(Font.TIMES, pscaption);
+					if (captionfont.equalsIgnoreCase("TIMES_BOLD"))
+						fcaption=new Font(Font.TIMES_BOLD, pscaption);
+					if (captionfont.equalsIgnoreCase("TIMES_BOLD_ITALIC"))
+						fcaption=new Font(Font.TIMES_BOLD_ITALIC, pscaption);
+					if (captionfont.equalsIgnoreCase("TIMES_ITALIC"))
+						fcaption=new Font(Font.TIMES_ITALIC, pscaption);
+				}
+
+				Font flabel=new Font(Font.TIMES, pslabel);
+				if (labelfont!=null)
+				{
+					if (labelfont.equalsIgnoreCase("HELVETICA"))
+						flabel=new Font(Font.HELVETICA, pslabel);
+					if (labelfont.equalsIgnoreCase("HELVETICA_BOLD"))
+						flabel=new Font(Font.HELVETICA_BOLD, pslabel);
+					if (labelfont.equalsIgnoreCase("HELVETICA_BOLD_ITALIC"))
+						flabel=new Font(Font.HELVETICA_BOLD_ITALIC, pslabel);
+					if (labelfont.equalsIgnoreCase("HELVETICA_ITALIC"))
+						flabel=new Font(Font.HELVETICA_ITALIC, pslabel);
+					if (labelfont.equalsIgnoreCase("TIMES"))
+						flabel=new Font(Font.TIMES, pslabel);
+					if (labelfont.equalsIgnoreCase("TIMES_BOLD"))
+						flabel=new Font(Font.TIMES_BOLD, pslabel);
+					if (labelfont.equalsIgnoreCase("TIMES_BOLD_ITALIC"))
+						flabel=new Font(Font.TIMES_BOLD_ITALIC, pslabel);
+					if (labelfont.equalsIgnoreCase("TIMES_ITALIC"))
+						flabel=new Font(Font.TIMES_ITALIC, pslabel);
+				}
+
+				Font fvar=new Font(Font.TIMES, psvar);
+				if (varfont!=null)
+				{
+					if (varfont.equalsIgnoreCase("HELVETICA"))
+						fvar=new Font(Font.HELVETICA, psvar);
+					if (varfont.equalsIgnoreCase("HELVETICA_BOLD"))
+						fvar=new Font(Font.HELVETICA_BOLD, psvar);
+					if (varfont.equalsIgnoreCase("HELVETICA_BOLD_ITALIC"))
+						fvar=new Font(Font.HELVETICA_BOLD_ITALIC, psvar);
+					if (varfont.equalsIgnoreCase("HELVETICA_ITALIC"))
+						fvar=new Font(Font.HELVETICA_ITALIC, psvar);
+					if (varfont.equalsIgnoreCase("TIMES"))
+						fvar=new Font(Font.TIMES, psvar);
+					if (varfont.equalsIgnoreCase("TIMES_BOLD"))
+						fvar=new Font(Font.TIMES_BOLD, psvar);
+					if (varfont.equalsIgnoreCase("TIMES_BOLD_ITALIC"))
+						fvar=new Font(Font.TIMES_BOLD_ITALIC, psvar);
+					if (varfont.equalsIgnoreCase("TIMES_ITALIC"))
+						fvar=new Font(Font.TIMES_ITALIC, psvar);
+				}
+
+				if (caption)
+				{
+					String text=dr.getdescription();
+					doc.writeLine(text, fcaption, acaption);
+				}
+
+				DataReader data=new DataReader(dr);
+				int totalvar=0;
+				Vector<String> writeformat=new Vector<String>();
+				if (selectedvar==null)
+				{
+					totalvar=dr.gettotalvar();
+					for (int j=0; j<totalvar; j++)
+					{
+						writeformat.add(dr.getvarformat(j));
+					}
+				}
+				else
+				{
+					totalvar=selectedvar.length;
+					for (int j=0; j<totalvar; j++)
+					{
+						writeformat.add(dr.getvarformatfromname(selectedvar[j]));
+					}
+				}
+				int[] replacerule=new int[totalvar];
+				if (replace==null)
+				{
+					for (int j=0; j<totalvar; j++)
+					{
+						replacerule[j]=1;
+					}
+				}
+				else if (replace.equalsIgnoreCase(Keywords.replaceall))
+					{
+					for (int j=0; j<totalvar; j++)
+					{
+						replacerule[j]=1;
+					}
+				}
+				else if (replace.equalsIgnoreCase(Keywords.replaceformat))
+				{
+					for (int j=0; j<totalvar; j++)
+					{
+						replacerule[j]=2;
+					}
+				}
+				else if (replace.equalsIgnoreCase(Keywords.replacemissing))
+				{
+					for (int j=0; j<totalvar; j++)
+					{
+						replacerule[j]=3;
+					}
+				}
+				else
+				{
+					for (int j=0; j<totalvar; j++)
+					{
+						replacerule[j]=1;
+					}
+				}
+				String uselocalefornumbers=(String)dsinfo.get(Keywords.uselocalefornumbers);
+				String numdecimals=(String)dsinfo.get(Keywords.numdecimals);
+				int defdec=-1;
+				if (numdecimals!=null)
+				{
+					try
+					{
+						defdec = Integer.parseInt(numdecimals);
+					}
+					catch(NumberFormatException  nfe){}
+				}
+				boolean isselnumasos=false;
+				if (uselocalefornumbers==null)
+					uselocalefornumbers="";
+				if (uselocalefornumbers.equalsIgnoreCase("YES"))
+					isselnumasos=true;
+
+				boolean istowrite=true;
+				boolean newrep=false;
+				if (defdec>-1)
+					newrep=true;
+				if (isselnumasos)
+					newrep=true;
+				if (newrep)
+					istowrite=false;
+
+				if (!data.open(selectedvar, replacerule, istowrite))
+				{
+					baos.close();
+					return new Result(data.getmessage(), false, null);
+				}
+
+				Column[] cols=new Column[totalvar];
+				Heading[] hd=new Heading[totalvar];
+				double papwidth=docpaper.getWidth()-2*docpaper.getHorizontalMargin();
+				double widthvar=papwidth/(totalvar+1);
+				if (widthvar<1)
+				{
+					baos.close();
+					return new Result("%1226%<br>\n", false, null);
+				}
+				for (int j=0; j<totalvar; j++)
+				{
+					cols[j]=new Column(widthvar, avar, fvar);
+					String labname="";
+					if (selectedvar!=null)
+						labname=dr.getvarlabelfromname(selectedvar[j]);
+					else
+						labname=dr.getvarlabel(j);
+					hd[j]=new Heading(labname, alabel, flabel);
+				}
+				Table table = doc.createTable(cols, hd);
+				if (bw!=0)
+				{
+					table.setBorder(bw);
+					table.setColumnBorder(bw);
+					table.setRowBorder(bw);
+				}
+				while (!data.isLast())
+				{
+					String[] values=data.getRecord();
+					if (values==null)
+					{
+						baos.close();
+						return new Result(data.getmessage(), false, null);
+					}
+					if (newrep==true)
+					{
+						values=NewWriteFormat.getwriteformat(values, writeformat, defdec, isselnumasos);
+					}
+					table.addRow(values);
+				}
+				data.close();
+				table.close();
+				if (i<maxds)
+					doc.newLine();
+
+			}
+			doc.close();
+			if (writeonremote)
+			{
+				byte[] respdf=baos.toByteArray();
+				FileOutputStream fas=new FileOutputStream(outreport);
+				fas.write(respdf);
+				fas.close();
+				return new Result("%1224% ("+outreport+")<br>\n", true, null);
+			}
+			else
+			{
+				Vector<StepResult> result = new Vector<StepResult>();
+				result.add(new LocalFileSave(outreport, baos.toByteArray()));
+				return new Result("", true, result);
+			}
+		}
+		catch (Exception e)
+		{
+			return new Result("%1225%<br>\n", false, null);
+		}
+	}
+	public LinkedList<GetRequiredParameters> getparameters()
+	{
+		LinkedList<GetRequiredParameters> parameters=new LinkedList<GetRequiredParameters>();
+		String[] dep ={""};
+		parameters.add(new GetRequiredParameters(Keywords.outreport+"=", "outdictreport", true, 450, dep, "", 1));
+		parameters.add(new GetRequiredParameters(Keywords.pdflayout+"=" , "setting=pdflayout", false, 451, dep, "", 1));
+		parameters.add(new GetRequiredParameters(Keywords.remote+"=" , "setting=remote", false, 162, dep, "", 1));
+		return parameters;
+	}
+	public String[] getstepinfo()
+	{
+		String[] info=new String[2];
+		info[0]="1213";
+		info[1]="1213";
+		return info;
+	}
+}
+
