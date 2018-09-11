@@ -1,0 +1,15 @@
+package ADaMSoft.utilities.activation;
+
+/**
+ *	A class to encapsulate Mailcap parsing related exceptions
+ */
+public class MailcapParseException extends Exception {
+
+    public MailcapParseException() {
+	super();
+    }
+
+    public MailcapParseException(String inInfo) {
+	super(inInfo);
+    }
+}
